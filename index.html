@@ -159,13 +159,15 @@ function startSpin(){
 function stopSpin(){ spinOn = false; }
 
 function clearRound(){
-  if (guessMarker) { guessMarker.remove(); guessMarker = null; }
-  if (targetMarker) { targetMarker.remove(); targetMarker = null; }
-  if (arcOn) {
-    if (map.getLayer('arcline')) map.removeLayer('arcline');
-    if (map.getSource('arc')) map.removeSource('arc');
-    arcOn = false;
-  }
+  try {
+    if (guessMarker) { guessMarker.remove(); guessMarker = null; }
+    if (targetMarker) { targetMarker.remove(); targetMarker = null; }
+    if (arcOn) {
+      if (map.getLayer('arcline')) map.removeLayer('arcline');
+      if (map.getSource('arc')) map.removeSource('arc');
+      arcOn = false;
+    }
+  } catch(err) { arcOn = false; }
 }
 
 function showIntro(){
@@ -223,32 +225,34 @@ function lockIn(){
   var p = pts(d);
   results.push({ d: d, p: p, e: emo(d) });
 
-  var elp = document.createElement('div');
-  elp.className = 'pulse';
-  targetMarker = new maplibregl.Marker({ element: elp }).setLngLat([q.lo, q.la]).addTo(map);
-
   var pts64 = arcPoints(gla, glo, q.la, q.lo, 64);
-  map.addSource('arc', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [pts64[0]] } } });
-  map.addLayer({ id: 'arcline', type: 'line', source: 'arc',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#fbbf24', 'line-width': 2.5, 'line-opacity': 0.9 } });
-  arcOn = true;
-  var t0 = null;
-  function grow(ts){
-    if (!t0) t0 = ts;
-    var f = Math.min(1, (ts - t0) / 900);
-    var upto = Math.max(1, Math.round(f * 64));
-    if (arcOn && map.getSource('arc')) {
-      map.getSource('arc').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts64.slice(0, upto + 1) } });
-      if (f < 1) requestAnimationFrame(grow);
+  try {
+    var elp = document.createElement('div');
+    elp.className = 'pulse';
+    targetMarker = new maplibregl.Marker({ element: elp }).setLngLat([q.lo, q.la]).addTo(map);
+    if (map.isStyleLoaded()) {
+      map.addSource('arc', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [pts64[0]] } } });
+      map.addLayer({ id: 'arcline', type: 'line', source: 'arc',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#fbbf24', 'line-width': 2.5, 'line-opacity': 0.9 } });
+      arcOn = true;
+      var t0 = null;
+      var grow = function(ts){
+        if (!t0) t0 = ts;
+        var f = Math.min(1, (ts - t0) / 900);
+        var upto = Math.max(1, Math.round(f * 64));
+        if (arcOn && map.getSource('arc')) {
+          map.getSource('arc').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts64.slice(0, upto + 1) } });
+          if (f < 1) requestAnimationFrame(grow);
+        }
+      };
+      requestAnimationFrame(grow);
     }
-  }
-  requestAnimationFrame(grow);
-
-  var bounds = new maplibregl.LngLatBounds();
-  for (var i = 0; i < pts64.length; i += 4) bounds.extend(pts64[i]);
-  bounds.extend(pts64[64]);
-  map.fitBounds(bounds, { padding: { top: 110, bottom: 260, left: 60, right: 60 }, maxZoom: (d <= 100 ? 8.5 : 5.2), duration: 1300 });
+    var bounds = new maplibregl.LngLatBounds();
+    for (var i = 0; i < pts64.length; i += 4) bounds.extend(pts64[i]);
+    bounds.extend(pts64[64]);
+    map.fitBounds(bounds, { padding: { top: 110, bottom: 260, left: 60, right: 60 }, maxZoom: (d <= 100 ? 8.5 : 5.2), duration: 1300 });
+  } catch(err) { /* map visuals must never block scoring */ }
 
   el('prompt').style.display = 'none';
   el('lockwrap').style.display = 'none';
@@ -385,16 +389,15 @@ function boot(){
     el('lock').onclick = lockIn;
     map.once('style.load', function(){
       if (map.setProjection) map.setProjection({ type: 'globe' });
-      el('loading').style.display = 'none';
-      var done = S.hist[D.d];
-      if (done && typeof done.km === 'number') {
-        startSpin();
-        showEnd(done.s, done.g, done.km, done.st || null, false);
-      } else {
-        startSpin();
-        showIntro();
-      }
     });
+    el('loading').style.display = 'none';
+    startSpin();
+    var done = S.hist[D.d];
+    if (done && typeof done.km === 'number') {
+      showEnd(done.s, done.g, done.km, done.st || null, false);
+    } else {
+      showIntro();
+    }
   }).catch(function(){
     el('loading').innerHTML = '<div style="font-size:40px">😵</div><div>Could not load the globe. Check your connection and refresh.</div>';
   });
