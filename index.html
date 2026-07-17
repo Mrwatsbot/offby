@@ -199,7 +199,7 @@ function showTarget(){
   var b = el('lock');
   b.disabled = true; b.textContent = 'Drop a pin first';
   el('lockwrap').style.display = 'block';
-  el('sheet').className = '';
+  el('sheet').classList.remove('up');
 }
 
 function placePin(lngLat){
@@ -248,7 +248,7 @@ function lockIn(){
   var bounds = new maplibregl.LngLatBounds();
   for (var i = 0; i < pts64.length; i += 4) bounds.extend(pts64[i]);
   bounds.extend(pts64[64]);
-  map.fitBounds(bounds, { padding: { top: 110, bottom: 260, left: 60, right: 60 }, maxZoom: 8, duration: 1300 });
+  map.fitBounds(bounds, { padding: { top: 110, bottom: 260, left: 60, right: 60 }, maxZoom: (d <= 100 ? 8.5 : 5.2), duration: 1300 });
 
   el('prompt').style.display = 'none';
   el('lockwrap').style.display = 'none';
@@ -258,10 +258,10 @@ function lockIn(){
     '<div class="pt"><b>+' + p + '</b> / 100' + (d <= 25 ? ' &middot; <b style="color:var(--green)">PERFECT</b>' : '') + '</div>' +
     '<div class="fact">' + q.f + '</div>' +
     '<button class="btn" id="next">' + (idx < 4 ? 'Next place' : 'See my score') + '</button>';
-  el('sheet').className = 'up';
+  el('sheet').classList.add('up');
   el('next').onclick = function(){
     idx++;
-    el('sheet').className = '';
+    el('sheet').classList.remove('up');
     if (idx < 5) {
       map.easeTo({ center: [15, 20], zoom: 1.3, duration: 900 });
       setTimeout(showTarget, 250);
@@ -310,7 +310,7 @@ function lvlHtml(){
 function showEnd(total, grid, totkm, st, leveledUp){
   el('prompt').style.display = 'none';
   el('lockwrap').style.display = 'none';
-  el('sheet').className = '';
+  el('sheet').classList.remove('up');
   map.easeTo({ center: [15, 20], zoom: 1.2, duration: 1000 });
   startSpin();
   var h = '<div class="k2">Puzzle #' + D.n + ' complete</div>' +
@@ -368,6 +368,11 @@ function boot(){
     D = res[1];
     el('pno').textContent = '#' + D.n;
     style.layers = style.layers.filter(function(l){ return l.type !== 'symbol'; });
+    for (var i = 0; i < style.layers.length; i++) {
+      if (style.layers[i].id === 'natural_earth') {
+        style.layers[i].paint['raster-opacity'] = ['interpolate', ['exponential', 1.5], ['zoom'], 0, 0.7, 7, 0.45];
+      }
+    }
     map = new maplibregl.Map({
       container: 'map',
       style: style,
