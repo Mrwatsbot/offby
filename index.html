@@ -381,12 +381,10 @@ function boot(){
       attributionControl: { compact: true },
       canvasContextAttributes: { antialias: true }
     });
-    map.on('style.load', function(){
-      if (map.setProjection) map.setProjection({ type: 'globe' });
-    });
     map.on('click', function(e){ placePin(e.lngLat); });
     el('lock').onclick = lockIn;
-    map.on('load', function(){
+    map.once('style.load', function(){
+      if (map.setProjection) map.setProjection({ type: 'globe' });
       el('loading').style.display = 'none';
       var done = S.hist[D.d];
       if (done && typeof done.km === 'number') {
@@ -397,7 +395,6 @@ function boot(){
         showIntro();
       }
     });
-    map.on('error', function(){});
   }).catch(function(){
     el('loading').innerHTML = '<div style="font-size:40px">😵</div><div>Could not load the globe. Check your connection and refresh.</div>';
   });
